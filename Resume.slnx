@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="AnyGame/AnyGame.csproj" Id="483a6f7d-8b6a-4654-8064-c53c138043a8" />
+  <Project Path="BattleEngine/BattleEngine.csproj" />
   <Project Path="HarmModification/HarmModificationEngine.csproj" Id="63560354-849e-444e-ad4c-4e42dfd60895" />
   <Project Path="HealthAndStat/HealthAndStat.csproj" Id="3c5fc6eb-77d4-435b-9512-2574d4b4165a" />
 </Solution>

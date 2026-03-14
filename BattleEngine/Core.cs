@@ -1,8 +1,9 @@
 ﻿using System.Numerics;
 using ResumeGame.Models;
-using ResumeGame.HarmModificationEngine;
+using ResumeGame.Models.Usage;
 using AnyGame.TurnCount;
 using AnyGame.TurnCount.Usage;
+using ResumeGame.HarmModificationEngine;
 
 public interface IBattler<THealthAndHarm, TStat, TCount> : IFighter<THealthAndHarm, TStat>
     where THealthAndHarm : INumber<THealthAndHarm>, IUnsignedNumber<THealthAndHarm>, IMinMaxValue<THealthAndHarm>
@@ -10,8 +11,8 @@ public interface IBattler<THealthAndHarm, TStat, TCount> : IFighter<THealthAndHa
     where TCount : INumber<TCount>, IUnsignedNumber<TCount>, IMinMaxValue<TCount>
 {
     new Health<THealthAndHarm> Health { get; set; }
-    IEnumerable<IMod<THealthAndHarm, TStat, TCount>> OffensiveMods { get; }
-    IEnumerable<IMod<THealthAndHarm, TStat, TCount>> DefensiveMods { get; }
+    IMod<THealthAndHarm, TStat, TCount>[] OffensiveMods { get; }
+    IMod<THealthAndHarm, TStat, TCount>[] DefensiveMods { get; }
 }
 
 public static class IBattlerExtensions
@@ -23,6 +24,7 @@ public static class IBattlerExtensions
     {
         public bool IsDead => battler.Health.Current == battler.Health.Minimum;
         public bool IsFull => battler.Health.Current == battler.Health.Maximum;
+        public void Take(Harm<THealthAndHarm> harm) => battler.Health.Apply(harm);
     }
 }
 
@@ -35,12 +37,28 @@ public sealed record class Battle<THealthAndHarm, TStat, TCount> : IFight<TCount
     public IBattler<THealthAndHarm, TStat, TCount> ReactiveBattler { get; }
     public DuelTurnCount<TCount> DuelTurnCount { get; private set; }
 
-    public Battle(IBattler<THealthAndHarm, TStat, TCount> priorityBattler, IBattler<THealthAndHarm, TStat, TCount> battler)
+    public IBattler<THealthAndHarm, TStat, TCount> Attacker
     {
-        (ProactiveBattler, ReactiveBattler)
-            = (priorityBattler.Dexterity.Current >= battler.Dexterity.Current)
-            ? (priorityBattler, battler)
-            : (battler, priorityBattler);
+        get
+        {
+            if (DuelTurnCount.Duelist == DuelistTypes.none) throw new InvalidOperationException("There is no none-battler");
+            return DuelTurnCount.Duelist == DuelistTypes.Proactive ? ProactiveBattler : ReactiveBattler;
+        }
+    }
+
+    public IBattler<THealthAndHarm, TStat, TCount> Victim
+    {
+        get
+        {
+            if (DuelTurnCount.Duelist == DuelistTypes.none) throw new InvalidOperationException("There is no none-battler");
+            return DuelTurnCount.Duelist == DuelistTypes.Proactive ? ReactiveBattler : ProactiveBattler;
+        }
+    }
+
+    public Battle(IBattler<THealthAndHarm, TStat, TCount> proactiveBattler, IBattler<THealthAndHarm, TStat, TCount> reactiveBattler)
+    {
+        ProactiveBattler = proactiveBattler;
+        ReactiveBattler = reactiveBattler;
         DuelTurnCount = new();
     }
 
@@ -48,11 +66,10 @@ public sealed record class Battle<THealthAndHarm, TStat, TCount> : IFight<TCount
     {
         DuelTurnCount = DuelTurnCount.GetNextOrThrow();
 
-        (IBattler<THealthAndHarm, TStat, TCount> one, IBattler<THealthAndHarm, TStat, TCount> two) they
-            = (DuelTurnCount.Duelist == DuelistTypes.Proactive)
-            ? (ProactiveBattler, ReactiveBattler)
-            : (ReactiveBattler, ProactiveBattler);
+        AttackContext<THealthAndHarm, TStat, TCount> ctx = new(Attacker, Victim, this);
 
-        AttackContext<THealthAndHarm, TStat, TCount> ctx = new(they.one, they.two, this);
+        ctx.Modify(Attacker.OffensiveMods);
+        ctx.Modify(Victim.DefensiveMods);
+        Victim.Take(ctx.GetHarm());
     }
 }

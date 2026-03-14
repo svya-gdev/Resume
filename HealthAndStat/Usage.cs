@@ -20,6 +20,13 @@ public static class Application
             var cur = nerf.Amount < stat.Current ? stat.Current - nerf.Amount : stat.Minimum;
             return new(min, cur);
         }
+
+        public static bool operator >(Stat<T> S1, Stat<T> S2) => S1.Current > S2.Current;
+        public static bool operator <(Stat<T> S1, Stat<T> S2) => S1.Current < S2.Current;
+        public static bool operator >=(Stat<T> S1, Stat<T> S2) => S1.Current >= S2.Current;
+        public static bool operator <=(Stat<T> S1, Stat<T> S2) => S1.Current <= S2.Current;
+        public static bool operator ==(Stat<T> S1, Stat<T> S2) => S1.Current == S2.Current;
+        public static bool operator !=(Stat<T> S1, Stat<T> S2) => S1.Current != S2.Current;
     }
 
     extension<T>(Health<T> health)
